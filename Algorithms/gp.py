@@ -63,6 +63,7 @@ class f_GP():
         k_train_SR = k_SR_train.T   #k_nm:=K(X_train, K_SR)
             
         # Set Attribute
+        self.n_samples = n_samples
         self.X = X
         self.y = y
         self.X_SR = X_SR
@@ -74,12 +75,12 @@ class f_GP():
         self.k_train_SR = k_train_SR
         
         # Use full data points
-        self.alpha = np.dot(np.linalg.inv(k_train + self.var_n * np.identity(n_samples)),y)
-        
+        self.alpha = np.dot(np.linalg.inv(k_train + self.var_n * np.identity(self.n_samples)),y)
+
         # Use subset of data points: 
-        self.alpha_SR = np.dot(np.linalg.inv(np.dot(k_SR_train,k_train_SR) + self.var_n*k_SR), np.dot(k_SR_train,y))
-        
-        return self.alpha_SR
+        #self.alpha_SR = np.dot(np.linalg.inv(np.dot(k_SR_train,k_train_SR) + self.var_n*k_SR), np.dot(k_SR_train,y)) #!!!!This causes numerical problem!!!!
+	self.alpha_SR = np.linalg.solve(np.dot(k_SR_train,k_train_SR) + self.var_n*k_SR, np.dot(k_SR_train,y))
+	return self.alpha
     
     def predict(self, X_test, eval_MSE=False, SR=True):
         # Normalize input
@@ -95,16 +96,17 @@ class f_GP():
             pred_SR = np.dot(k_SR_test.T,self.alpha_SR)
             pred_SR = (pred_SR * self.y_std) + self.y_mean
             inv_temp_SR = np.linalg.inv(np.dot(self.k_SR_train,self.k_train_SR) + self.var_n*self.k_SR)
-            cov_SR = self.var_n*np.dot(k_SR_test.T, np.dot(inv_temp_SR, k_SR_test))
+            #cov_SR = self.var_n*np.dot(k_SR_test.T, np.dot(inv_temp_SR, k_SR_test))
             if eval_MSE:
                 return pred_SR, cov_SR
             else:
                 return pred_SR
         else:
             pred = np.dot(k_train_test.T, self.alpha)
-            pred = (pred * self.y_std) + self.y_mean   # mistakes: use X_mean X_std        
-            inv_temp = np.linalg.inv(self.k_train + self.var_n * np.identity(n_samples))
-            cov = k_test - np.dot(self.k_train_test.T, np.dot(inv_temp, self.k_train_test))
+            pred = (pred * self.y_std) + self.y_mean   # mistakes: use X_mean X_std  
+            print(self.n_samples)      
+            inv_temp = np.linalg.inv(self.k_train + self.var_n * np.identity(self.n_samples))
+            #cov = k_test - np.dot(self.k_train_test.T, np.dot(inv_temp, self.k_train_test))
             if eval_MSE:
                 return pred, cov
             else:
